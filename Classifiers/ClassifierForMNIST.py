@@ -5,9 +5,10 @@ from torch.utils.data import DataLoader
 import pickle
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
+from torchvision.datasets import MNIST
 
 def return_sklearn_data_set(size):
-    data_set = CustomDataSet("DataPreparation/CorruptedFashionMNIST/Names.csv", "DataPreparation/CorruptedFashionMNIST")
+    data_set = CustomDataSet("DataPreparation/CorruptedMNIST/Names.csv", "DataPreparation/CorruptedMNIST")
     data_loader = DataLoader(data_set, batch_size=size)
     X =  next(iter(data_loader))[0].numpy().reshape(size, -1)
     y = next(iter(data_loader))[1].numpy()
@@ -18,7 +19,8 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 #print(HG.best_estimator_.score(X_test, y_test))
 #print(HG.best_params_)
 
-svc_model = SVC(C=10, kernel="rbf").fit(X_train, y_train)
+svc_model = SVC(C=100, kernel="poly").fit(X_train, y_train)
+print(svc_model.score(X_test, y_test))
 y_pred = svc_model.predict(X_test)
 c_matrix = confusion_matrix(y_test, y_pred)
 ConfusionMatrixDisplay(c_matrix).plot()
@@ -27,6 +29,6 @@ plt.show()
 
 
 
-with open("CorrputedFashionMNISTClassifier.pkl", "wb+") as file:
+with open("MNISTClassifier.pkl", "wb+") as file:
     pickle.dump(svc_model, file)
 

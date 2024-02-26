@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 
 
-data_set = datasets.FashionMNIST("/FashionMNIST/", download=False, transform=c.fog)
+data_set = datasets.MNIST("./", download=True, transform=c.fog)
 data_loader = DataLoader(data_set, batch_size=1)
 
 
@@ -20,10 +20,10 @@ for image, label in tqdm(data_loader):
     image = Image.fromarray(image.detach().numpy()[0]).convert('L')
     filename = str(uuid.uuid4()) + ".png"
     label_name_dict.append({"Filename": filename, "Label": int(label)})
-    image.save("CorruptedFashionMNIST"+os.sep+filename)
+    image.save("CorruptedMNIST"+os.sep+filename)
 
 
-with open("CorruptedFashionMNIST" + os.sep + 'Names.csv', 'w') as csvfile:
+with open("CorruptedMNIST" + os.sep + 'Names.csv', 'w') as csvfile:
     writer = csv.DictWriter(csvfile, fieldnames=["Filename", "Label"])
     writer.writeheader()
     for data in label_name_dict:

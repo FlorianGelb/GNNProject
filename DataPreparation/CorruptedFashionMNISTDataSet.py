@@ -9,7 +9,7 @@ From https://pytorch.org/tutorials/beginner/basics/data_tutorial.html
 """
 
 
-class CorruptedMNISTDataSet(Dataset):
+class CustomDataSet(Dataset):
     def __init__(self, annotations_file, img_dir, transform=None, target_transform=None):
         self.img_labels = pd.read_csv(annotations_file)
         self.img_dir = img_dir
