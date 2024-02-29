@@ -1,4 +1,5 @@
 import torch
+import tqdm
 from sklearn.datasets import make_moons
 from torch import nn, optim
 from torch.autograd import Variable
@@ -10,11 +11,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import shap
 from AutoEncoders.SimpleAutoencoder import AutoEncoder
+from tqdm import tqdm
 
 
-
-
-# Create training set and testing
 def generate_synth_data(n):
     x1 = np.array([0 for i in range(n)]).reshape(n, 1)
     x2 = np.random.uniform(0, 1, (n, 1))
@@ -34,26 +33,26 @@ X = generate_synth_data(10)
 X = torch.FloatTensor(X)
 
 
-# convert it to tensor
-dataset = TensorDataset(X, X)
-data_loader = DataLoader(dataset, batch_size=10, shuffle=True)
 
-#Set parameters
-input_size=6
-bottleneck_size=3
-hidden_size=3
-layers=1
+input_size = 6
+bottleneck_size = 3
+hidden_size = 3
+layers = 1
 model = AutoEncoder(input_size, bottleneck_size,hidden_size,layers)
+
+
+data_loader = DataLoader(X, batch_size=10, shuffle=True)
+
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 #Train
-num_epochs = 1
+num_epochs = 450
 loss_list=[]
 state_dicts = {}#Storage parameters
-for epoch in range(num_epochs):
+for epoch in tqdm(range(num_epochs)):
     for data in data_loader:
-        inputs, _ = data
+        inputs = data
 
         # Forward
         outputs = model.forward(inputs)
@@ -66,32 +65,44 @@ for epoch in range(num_epochs):
 
 
     loss_list.append(loss.item())
+plt.plot(range(num_epochs), loss_list, label='Training Loss')
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.legend()
+plt.show()
 
 
-def custom_masker(mask, x):
-    return (x * mask)
+explainer = shap.KernelExplainer(lambda w: custom_function(model, X, w, 1), background_data)
+shapley_values = explainer.shap_values(s.detach().numpy()).reshape(3,3)
+fig, ax = plt.subplots()
+ax.matshow(shapley_values)
+for (i, j), z in np.ndenumerate(shapley_values):
+    ax.text(j, i, '{:0.1f}'.format(100*z), ha='center', va='center',
+            bbox=dict(boxstyle='round', facecolor='white', edgecolor='0.3'))
+plt.show()
+print(shapley_values)
+print(s.reshape(3,3))
 
+def custom_function(model, data, weights, layer):
+    weight_matrix_shape = model.encoder[layer].weight.shape
+    outputs = []
+    for w in weights:
+        weight = torch.nn.Parameter(torch.Tensor(w.reshape(weight_matrix_shape)))
+        model.encoder[layer].weight = weight
+        outputs.append(model.calculate_loss(data).detach().numpy())
+    return np.array(outputs)
+def prune(model : AutoEncoder, sparsity_level, data_set, background_data_samples=10):
 
+    for layer in len(model.encoder):
+        layer_shape = model.encoder[layer].weight.data.shape
+        weights_in_layer = model.encoder[layer].weight.data.reshape(1, -1).flatten()
+        background_data = np.random.uniform(weights_in_layer.min(), weights_in_layer.max(), (background_data_samples, len(weights_in_layer)))
+        explainer = shap.KernelExplainer(lambda w: custom_function(model, data_set, w, layer), background_data)
+        shapley_value = explainer.shap_values(weights_in_layer.detach().numpy()).reshape(layer_shape)
 
-# Plot loss
-#plt.plot(range(num_epochs), loss_list, label='Training Loss')
-#plt.xlabel('Epoch')
-#plt.ylabel('Loss')
-#plt.legend()
-#plt.show()
-
-def proxy_function(autoencoder: AutoEncoder, weights, layer, data):
-    data = torch.Tensor(data)
-    old_weights = autoencoder.encoder[layer].weight.data
-    loss = []
-    for i in range(len(weights)):
-        old_weights[i, 0] = torch.Tensor(weights)[i]
-        autoencoder.encoder[layer].weight = torch.nn.Parameter(old_weights)
-        loss.append(autoencoder.calculate_loss(data).detach().numpy())
-    return loss
-
-
-print(model.encoder[0].weight.data)
-explainer = shap.Explainer(lambda w: proxy_function(model, w, 0, X), custom_masker)
-values = explainer(model.encoder[0].weight.data.reshape(-1, 1))
-print(values)
+    for layer in len(model.decoder):
+        layer_shape = model.encoder[layer].weight.data.shape
+        weights_in_layer = model.encoder[layer].weight.data.reshape(1, -1).flatten()
+        background_data = np.random.uniform(weights_in_layer.min(), weights_in_layer.max(), (background_data_samples, len(weights_in_layer)))
+        explainer = shap.KernelExplainer(lambda w: custom_function(model, data_set, w, layer), background_data)
+        shapley_value = explainer.shap_values(weights_in_layer.detach().numpy()).reshape(layer_shape)
