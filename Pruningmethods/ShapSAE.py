@@ -72,37 +72,53 @@ plt.legend()
 plt.show()
 
 
-explainer = shap.KernelExplainer(lambda w: custom_function(model, X, w, 1), background_data)
-shapley_values = explainer.shap_values(s.detach().numpy()).reshape(3,3)
-fig, ax = plt.subplots()
-ax.matshow(shapley_values)
-for (i, j), z in np.ndenumerate(shapley_values):
-    ax.text(j, i, '{:0.1f}'.format(100*z), ha='center', va='center',
-            bbox=dict(boxstyle='round', facecolor='white', edgecolor='0.3'))
-plt.show()
-print(shapley_values)
-print(s.reshape(3,3))
-
-def custom_function(model, data, weights, layer):
-    weight_matrix_shape = model.encoder[layer].weight.shape
+def custom_function(model, data, weights, layer, part):
+    if part == "encoder":
+        weight_matrix_shape = model.encoder[layer].weight.shape
+    else:
+        weight_matrix_shape = model.decoder[layer].weight.shape
     outputs = []
     for w in weights:
         weight = torch.nn.Parameter(torch.Tensor(w.reshape(weight_matrix_shape)))
-        model.encoder[layer].weight = weight
+        if part == "encoder":
+            model.encoder[layer].weight = weight
+        else:
+            model.decoder[layer].weight = weight
         outputs.append(model.calculate_loss(data).detach().numpy())
     return np.array(outputs)
-def prune(model : AutoEncoder, sparsity_level, data_set, background_data_samples=10):
 
-    for layer in len(model.encoder):
-        layer_shape = model.encoder[layer].weight.data.shape
-        weights_in_layer = model.encoder[layer].weight.data.reshape(1, -1).flatten()
-        background_data = np.random.uniform(weights_in_layer.min(), weights_in_layer.max(), (background_data_samples, len(weights_in_layer)))
-        explainer = shap.KernelExplainer(lambda w: custom_function(model, data_set, w, layer), background_data)
-        shapley_value = explainer.shap_values(weights_in_layer.detach().numpy()).reshape(layer_shape)
 
-    for layer in len(model.decoder):
-        layer_shape = model.encoder[layer].weight.data.shape
-        weights_in_layer = model.encoder[layer].weight.data.reshape(1, -1).flatten()
-        background_data = np.random.uniform(weights_in_layer.min(), weights_in_layer.max(), (background_data_samples, len(weights_in_layer)))
-        explainer = shap.KernelExplainer(lambda w: custom_function(model, data_set, w, layer), background_data)
-        shapley_value = explainer.shap_values(weights_in_layer.detach().numpy()).reshape(layer_shape)
+def prune(model : AutoEncoder, importance_level, data_set, background_data_samples=10):
+    link_importance = {}
+    for part in [model.encoder, model.decoder]:
+        if part == model.encoder:
+            key = "encoder"
+        else:
+            key = "decoder"
+
+        link_importance[key] = {}
+        for layer in range(len(part)):
+            link_importance[key][layer] = []
+            weights_in_layer =part[layer].weight.data.reshape(1, -1).flatten()
+            background_data = np.random.uniform(weights_in_layer.min(), weights_in_layer.max(), (background_data_samples, len(weights_in_layer)))
+            explainer = shap.KernelExplainer(lambda w: custom_function(model, data_set, w, layer, key), background_data)
+            shapley_values = abs(explainer.shap_values(weights_in_layer.detach().numpy()))
+            link_importance[key][layer] = shapley_values
+
+    for key, li in link_importance["encoder"].items():
+        layer_importance = sum(li)
+        sorted_indices = np.flip(np.argsort(li))
+        cumulative_importance = np.cumsum(li[sorted_indices])
+        cutoff = np.argmax(cumulative_importance >= layer_importance*importance_level)
+        mask = np.ones(li.shape,dtype=bool)
+        mask[:] = False
+        mask[sorted_indices[:cutoff]] = True
+        link_importance["encoder"][key] = li * mask
+
+
+
+
+
+
+
+prune(model, 0.5,  X)
