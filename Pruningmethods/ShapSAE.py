@@ -1,3 +1,5 @@
+import copy
+
 import torch
 import tqdm
 from sklearn.datasets import make_moons
@@ -29,7 +31,7 @@ def generate_synth_data(n):
 
 
 
-X = generate_synth_data(10)
+X = generate_synth_data(100)
 X = torch.FloatTensor(X)
 
 
@@ -37,7 +39,7 @@ X = torch.FloatTensor(X)
 input_size = 6
 bottleneck_size = 3
 hidden_size = 3
-layers = 1
+layers = 6
 model = AutoEncoder(input_size, bottleneck_size,hidden_size,layers)
 
 
@@ -47,7 +49,7 @@ criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 #Train
-num_epochs = 450
+num_epochs = 200
 loss_list=[]
 state_dicts = {}#Storage parameters
 for epoch in tqdm(range(num_epochs)):
@@ -72,53 +74,45 @@ plt.legend()
 plt.show()
 
 
-def custom_function(model, data, weights, layer, part):
-    if part == "encoder":
-        weight_matrix_shape = model.encoder[layer].weight.shape
-    else:
-        weight_matrix_shape = model.decoder[layer].weight.shape
+def custom_function(model, data, weights, layer):
+    weight_matrix_shape = model.encoder[layer].weight.shape
     outputs = []
     for w in weights:
         weight = torch.nn.Parameter(torch.Tensor(w.reshape(weight_matrix_shape)))
-        if part == "encoder":
-            model.encoder[layer].weight = weight
-        else:
-            model.decoder[layer].weight = weight
+        model.encoder[layer].weight = weight
         outputs.append(model.calculate_loss(data).detach().numpy())
     return np.array(outputs)
 
 
 def prune(model : AutoEncoder, importance_level, data_set, background_data_samples=10):
-    link_importance = {}
-    for part in [model.encoder, model.decoder]:
-        if part == model.encoder:
-            key = "encoder"
-        else:
-            key = "decoder"
 
-        link_importance[key] = {}
-        for layer in range(len(part)):
-            link_importance[key][layer] = []
-            weights_in_layer =part[layer].weight.data.reshape(1, -1).flatten()
-            background_data = np.random.uniform(weights_in_layer.min(), weights_in_layer.max(), (background_data_samples, len(weights_in_layer)))
-            explainer = shap.KernelExplainer(lambda w: custom_function(model, data_set, w, layer, key), background_data)
-            shapley_values = abs(explainer.shap_values(weights_in_layer.detach().numpy()))
-            link_importance[key][layer] = shapley_values
+    model = copy.deepcopy(model)
+    for layer in tqdm(range(len(model.encoder))):
+        #if model.encoder[layer]
+        if type(model.encoder[layer]) != torch.nn.modules.linear.Linear:
+            continue
+        weights_in_layer = model.encoder[layer].weight.data.reshape(1, -1).flatten()
 
-    for key, li in link_importance["encoder"].items():
-        layer_importance = sum(li)
-        sorted_indices = np.flip(np.argsort(li))
-        cumulative_importance = np.cumsum(li[sorted_indices])
-        cutoff = np.argmax(cumulative_importance >= layer_importance*importance_level)
-        mask = np.ones(li.shape,dtype=bool)
+        background_data = np.random.uniform(weights_in_layer.min(), weights_in_layer.max(), (background_data_samples, len(weights_in_layer)))
+        explainer = shap.KernelExplainer(lambda w: custom_function(model, data_set, w, layer), background_data)
+        shapley_values = abs(explainer.shap_values(weights_in_layer.detach().numpy()))
+        layer_importance = sum(shapley_values)
+        sorted_indices = np.flip(np.argsort(shapley_values))
+        cumulative_importance = np.cumsum(shapley_values[sorted_indices])
+        cutoff = np.argmax(cumulative_importance >= layer_importance * importance_level)
+        mask = np.ones(shapley_values.shape, dtype=bool)
         mask[:] = False
         mask[sorted_indices[:cutoff]] = True
-        link_importance["encoder"][key] = li * mask
+        mask = mask.reshape(model.encoder[layer].weight.shape)
+        new_weight = torch.nn.Parameter(model.encoder[layer].weight.data * mask)
+        model.encoder[layer].weight = new_weight
+#        decoder_layer = len(model.decoder) - layer - 1
+#        model.decoder[decoder_layer].weight = torch.nn.Parameter(model.decoder[decoder_layer].weight.data * mask.T)
+    return model
 
 
 
 
-
-
-
-prune(model, 0.5,  X)
+print(model.calculate_loss(X))
+pruned_model = prune(model, 1,  X)
+print(pruned_model.calculate_loss(X))

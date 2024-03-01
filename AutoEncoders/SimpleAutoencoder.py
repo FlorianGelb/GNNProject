@@ -25,7 +25,7 @@ class AutoEncoder(nn.Module):
             self.hidden_layers_decoder.append(nn.Linear(hidden_size, hidden_size))
             self.hidden_layers_decoder.append(nn.ReLU())
 
-        self.hidden_layers_encoder.append(nn.Linear(hidden_size, bottleneck_size))
+        #self.hidden_layers_encoder.append(nn.Linear(hidden_size, bottleneck_size))
 
         self.encoder = nn.Sequential(self.input_layer,
                                      *self.hidden_layers_encoder,
