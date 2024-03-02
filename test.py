@@ -14,72 +14,73 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from DataPreparation.CorruptedFashionMNISTDataSet import CustomDataSet
 
+if __name__ == '__main__':
 
-def generate_synth_data(n):
-    x1 = np.array([0 for i in range(n)]).reshape(n, 1)
-    x2 = np.random.uniform(0, 1, (n, 1))
-    x3 = np.vstack(
-        [np.random.uniform(0, 0.25, (int(np.floor(n / 2)), 1)), np.random.uniform(0.75, 1, (int(np.ceil(n / 2)), 1))])
-    x4 = np.vstack(
-        [np.random.normal(0.25, 0.1, (int(np.floor(n / 2)), 1)), np.random.normal(0.75, 0.1, (int(np.ceil(n / 2)), 1))])
-    x5 = x1 + x2
-    x6 = x3 + x4
-    return np.hstack([x1, x2, x3, x4, x5, x6])
-
-
-def transform(input):
-    input = input.flatten()
-    input = input.type(torch.FloatTensor)
-    input -= torch.min(input)
-    input /= torch.max(input)
-    return input
-
-X = CustomDataSet("DataPreparation/CorruptedFashionMNIST/Names.csv",
-                  "DataPreparation/CorruptedFashionMNIST", transform=transform)
-
-X = torch.utils.data.Subset(X, range(1000))
-
-X = torch.FloatTensor(generate_synth_data(10))
-input_size = 6
-bottleneck_size = 3
-hidden_sizes = [3]
-layers = 0
-model = AutoEncoder(input_size, bottleneck_size,hidden_sizes,layers)
+    def generate_synth_data(n):
+        x1 = np.array([0 for i in range(n)]).reshape(n, 1)
+        x2 = np.random.uniform(0, 1, (n, 1))
+        x3 = np.vstack(
+            [np.random.uniform(0, 0.25, (int(np.floor(n / 2)), 1)), np.random.uniform(0.75, 1, (int(np.ceil(n / 2)), 1))])
+        x4 = np.vstack(
+            [np.random.normal(0.25, 0.1, (int(np.floor(n / 2)), 1)), np.random.normal(0.75, 0.1, (int(np.ceil(n / 2)), 1))])
+        x5 = x1 + x2
+        x6 = x3 + x4
+        return np.hstack([x1, x2, x3, x4, x5, x6])
 
 
-data_loader = DataLoader(X, batch_size=64, shuffle=True)
+    def transform(input):
+        input = input.flatten()
+        input = input.type(torch.FloatTensor)
+        input -= torch.min(input)
+        input /= torch.max(input)
+        return input
 
-criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+    X = CustomDataSet("DataPreparation/CorruptedFashionMNIST/Names.csv",
+                      "DataPreparation/CorruptedFashionMNIST", transform=transform)
 
-#Train
-num_epochs = 50
-loss_list=[]
-state_dicts = {}#Storage parameters
-for epoch in tqdm(range(num_epochs)):
-    for data in data_loader:
-        inputs = data
-        outputs = model.forward(inputs)
-        loss = criterion(outputs, inputs)
+    X = torch.utils.data.Subset(X, range(1000))
 
-        # Backward
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-
-    loss_list.append(loss.item())
-plt.plot(range(num_epochs), loss_list, label='Training Loss')
-plt.xlabel('Epoch')
-plt.ylabel('Loss')
-plt.legend()
-plt.show()
-plt.imshow(model.forward(inputs[0]).detach().numpy().reshape(6,1))
-plt.show()
-plt.imshow(inputs[0].detach().numpy().reshape(6,1))
-plt.show()
+    #X = torch.FloatTensor(generate_synth_data(10))
+    input_size = 28*28
+    bottleneck_size = 30
+    hidden_sizes = [500, 250, 150]
+    layers = len(hidden_sizes)
+    model = AutoEncoder(input_size, bottleneck_size,hidden_sizes,layers)
 
 
-pm = SSAE.prune(model, 0.8, inputs)
-plt.imshow(pm.forward(inputs[0]).detach().numpy().reshape(6,1))
-plt.show()
+    data_loader = DataLoader(X, batch_size=64, shuffle=True)
+
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+    #Train
+    num_epochs = 1
+    loss_list=[]
+    state_dicts = {}#Storage parameters
+    for epoch in tqdm(range(num_epochs)):
+        for data in data_loader:
+            inputs, _ = data
+            outputs = model.forward(inputs)
+            loss = criterion(outputs, inputs)
+
+            # Backward
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+
+        loss_list.append(loss.item())
+    #plt.plot(range(num_epochs), loss_list, label='Training Loss')
+    #plt.xlabel('Epoch')
+    #plt.ylabel('Loss')
+    #plt.legend()
+    #plt.show()
+    #plt.imshow(model.forward(inputs[0]).detach().numpy().reshape(28,28))
+    #plt.show()
+    #plt.imshow(inputs[0].detach().numpy().reshape(28,28))
+    #plt.show()
+
+
+    pm = SSAE.prune(model, 0.8, inputs)
+    #plt.imshow(pm.forward(inputs[0]).detach().numpy().reshape(28,28))
+    #plt.show()
