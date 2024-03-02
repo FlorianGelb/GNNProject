@@ -4,34 +4,37 @@ from torch import nn
 
 
 class AutoEncoder(nn.Module):
-    def __init__(self, input_size, bottleneck_size, hidden_size, layers):
+    def __init__(self, input_size, bottleneck_size, hidden_sizes, layers):
         super().__init__()
         self.input_size = input_size
         self.bottleneck_size = bottleneck_size
-        self.hidden_size = hidden_size
+        self.hidden_sizes = hidden_sizes
         self.layers = layers
         self.hidden_layers_encoder = []
         self.hidden_layers_decoder = []
 
-        self.input_layer = nn.Linear(input_size, hidden_size)
-        self.output_layer = nn.Linear(hidden_size, input_size)
-        self.bottleneck_layer = nn.Linear(bottleneck_size, bottleneck_size)
+        self.input_layer = nn.Linear(input_size, hidden_sizes[0])
+        self.output_layer = nn.Linear(hidden_sizes[0], input_size)
+        self.bottleneck_layer = nn.Linear(hidden_sizes[-1], bottleneck_size)
 
-        self.hidden_layers_decoder.append(nn.Linear(bottleneck_size, hidden_size))
-
-        for i in range(layers - 1):
-            self.hidden_layers_encoder.append(nn.Linear(hidden_size, hidden_size))
+        self.hidden_layers_decoder.append(nn.Linear(bottleneck_size,hidden_sizes[-1]))
+        self.hidden_layers_decoder.append(nn.ReLU())
+        for i in range(1, layers):
+            self.hidden_layers_encoder.append(nn.Linear(hidden_sizes[i-1], hidden_sizes[i]))
             self.hidden_layers_encoder.append(nn.ReLU())
-            self.hidden_layers_decoder.append(nn.Linear(hidden_size, hidden_size))
+        for i in reversed(range(1, layers)):
+            self.hidden_layers_decoder.append(nn.Linear(hidden_sizes[i], hidden_sizes[i-1]))
             self.hidden_layers_decoder.append(nn.ReLU())
 
         #self.hidden_layers_encoder.append(nn.Linear(hidden_size, bottleneck_size))
 
         self.encoder = nn.Sequential(self.input_layer,
+                                     nn.ReLU(),
                                      *self.hidden_layers_encoder,
                                      self.bottleneck_layer)
 
-        self.decoder = nn.Sequential(*self.hidden_layers_decoder,
+        self.decoder = nn.Sequential(
+                                    *self.hidden_layers_decoder,
                                      self.output_layer)
 
         self.model = nn.Sequential(self.encoder, self.decoder)
