@@ -29,6 +29,7 @@ if __name__ == '__main__':
 
 
     def transform(input):
+        input = torch.FloatTensor(np.array(input))
         input = input.flatten()
         input = input.type(torch.FloatTensor)
         input -= torch.min(input)
@@ -38,12 +39,13 @@ if __name__ == '__main__':
     X = CustomDataSet("DataPreparation/CorruptedFashionMNIST/Names.csv",
                       "DataPreparation/CorruptedFashionMNIST", transform=transform)
 
+    X = datasets.FashionMNIST("/FashionMNIST/", download=False,train=True,transform=transform)
     X = torch.utils.data.Subset(X, range(1000))
 
     #X = torch.FloatTensor(generate_synth_data(10))
     input_size = 28*28
-    bottleneck_size = 30
-    hidden_sizes = [500, 250, 150]
+    bottleneck_size = 35
+    hidden_sizes = [45]
     layers = len(hidden_sizes)
     model = AutoEncoder(input_size, bottleneck_size,hidden_sizes,layers)
 
@@ -54,7 +56,7 @@ if __name__ == '__main__':
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     #Train
-    num_epochs = 1
+    num_epochs = 100
     loss_list=[]
     state_dicts = {}#Storage parameters
     for epoch in tqdm(range(num_epochs)):
@@ -70,17 +72,24 @@ if __name__ == '__main__':
 
 
         loss_list.append(loss.item())
-    #plt.plot(range(num_epochs), loss_list, label='Training Loss')
-    #plt.xlabel('Epoch')
-    #plt.ylabel('Loss')
-    #plt.legend()
-    #plt.show()
-    #plt.imshow(model.forward(inputs[0]).detach().numpy().reshape(28,28))
-    #plt.show()
-    #plt.imshow(inputs[0].detach().numpy().reshape(28,28))
-    #plt.show()
-
-
-    pm = SSAE.prune(model, 0.8, inputs)
-    #plt.imshow(pm.forward(inputs[0]).detach().numpy().reshape(28,28))
-    #plt.show()
+    plt.plot(range(num_epochs), loss_list, label='Training Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.show()
+    plt.imshow(model.forward(inputs[0]).detach().numpy().reshape(28,28))
+    plt.show()
+    plt.imshow(inputs[0].detach().numpy().reshape(28,28))
+    plt.show()
+    plt.imshow(model.encoder[0].weight.data.detach().numpy())
+    plt.show()
+    print(model.calculate_loss(inputs))
+    pm = SSAE.prune(model, 0.1, inputs)
+    plt.imshow(pm.forward(inputs[0]).detach().numpy().reshape(28,28))
+    plt.show()
+    plt.imshow(pm.encoder[0].weight.data.detach().numpy())
+    plt.show()
+    print(pm.encoder[0].weight.data.detach().numpy())
+    print(model.encoder[0].weight.data.detach().numpy())
+    print(model.calculate_loss(inputs))
+    print(pm.calculate_loss(inputs))

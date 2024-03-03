@@ -6,7 +6,7 @@ import numpy as np
 import shap
 from AutoEncoders.SimpleAutoencoder import AutoEncoder
 from tqdm import tqdm
-from multiprocessing import Pool
+import multiprocessing
 
 import copy
 import numpy as np
@@ -19,35 +19,37 @@ from multiprocessing import Pool
 def custom_function(model, data, weights, layer, index_start, index_stop):
     weight_matrix_shape =  model.encoder[layer].weight.data.shape
     weight_matrix = model.encoder[layer].weight.data.reshape(1, -1).flatten()
+    original_weight_matrix = torch.nn.Parameter(copy.deepcopy(weight_matrix.reshape(weight_matrix_shape)))
     outputs = []
     for w in weights:
         weight_matrix[index_start:index_stop] = torch.FloatTensor(w)
         weight = torch.nn.Parameter(weight_matrix.reshape(weight_matrix_shape))
         model.encoder[layer].weight = weight
         outputs.append(model.calculate_loss(data).detach().numpy())
+        model.encoder[layer].weight = original_weight_matrix
     return np.array(outputs)
 
 
-def prune(model: AutoEncoder, importance_level, data_set, number_of_batch=2000, background_data_samples=10):
+def prune(model: AutoEncoder, importance_level, data_set, batch_size=800, background_data_samples=2):
 
-    model = copy.deepcopy(model)
-    for layer in tqdm(range(len(model.encoder))):
+    p_model = copy.deepcopy(model)
+    for layer in tqdm(reversed(range(1))):
         if type(model.encoder[layer]) != torch.nn.modules.linear.Linear:
             continue
         weights_in_layer = model.encoder[layer].weight.data.reshape(1, -1).flatten()
 
-        num_batches = len(weights_in_layer) // number_of_batch
-        shapley_values = []
-        background_data = np.random.uniform(weights_in_layer.min(), weights_in_layer.max(),
-                                            (background_data_samples, number_of_batch))
+        num_batches = int(np.ceil(len(weights_in_layer) / batch_size))
+        shapley_values = np.array([])
+
         for i in tqdm(range(num_batches)):
-            index_start, index_stop = i * number_of_batch, (i + 1) * number_of_batch
+            index_start, index_stop = i * batch_size, min((i + 1) * batch_size, len(weights_in_layer))
+            background_data = np.random.uniform(-1, 1, (background_data_samples,  index_stop - index_start))
             batch_weights = weights_in_layer.detach().numpy()[index_start : index_stop]
             explainer = shap.KernelExplainer(lambda w: custom_function(model, data_set, w, layer, index_start, index_stop), background_data)
             shapley_values_badge = abs(explainer.shap_values(batch_weights))
-            shapley_values.append(shapley_values_badge)
+            shapley_values = np.hstack((shapley_values, shapley_values_badge))
 
-        shapley_values = np.array(shapley_values).flatten()
+
         layer_importance = sum(shapley_values)
         sorted_indices = np.flip(np.argsort(shapley_values))
         cumulative_importance = np.cumsum(shapley_values[sorted_indices])
@@ -59,9 +61,10 @@ def prune(model: AutoEncoder, importance_level, data_set, number_of_batch=2000, 
         mask = mask.reshape(model.encoder[layer].weight.shape)
 
         new_weight = torch.nn.Parameter(model.encoder[layer].weight.data * mask)
-        model.encoder[layer].weight = new_weight
+        #p_model.encoder[layer].weight = new_weight
+        #p_model.decoder[len(p_model.encoder) - layer-1].weight = torch.nn.Parameter(p_model.decoder[len(p_model.encoder) - layer-1].weight.data * mask.T)
 
-    return model
+    return p_model
 
 """
 def custom_function(model, data, weights, layer, node):
