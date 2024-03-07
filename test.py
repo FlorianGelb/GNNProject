@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
 
     def transform(input):
-        input = torch.FloatTensor(np.array(input))
+        #input = torch.FloatTensor(np.array(input))
         input = input.flatten()
         input = input.type(torch.FloatTensor)
         input -= torch.min(input)
@@ -39,13 +39,13 @@ if __name__ == '__main__':
     X = CustomDataSet("DataPreparation/CorruptedFashionMNIST/Names.csv",
                       "DataPreparation/CorruptedFashionMNIST", transform=transform)
 
-    X = datasets.FashionMNIST("/FashionMNIST/", download=False,train=True,transform=transform)
+    #X = datasets.FashionMNIST("/FashionMNIST/", download=False,train=True,transform=transform)
     X = torch.utils.data.Subset(X, range(1000))
 
     #X = torch.FloatTensor(generate_synth_data(10))
     input_size = 28*28
     bottleneck_size = 35
-    hidden_sizes = [45]
+    hidden_sizes = [35]
     layers = len(hidden_sizes)
     model = AutoEncoder(input_size, bottleneck_size,hidden_sizes,layers)
 
@@ -84,7 +84,8 @@ if __name__ == '__main__':
     plt.imshow(model.encoder[0].weight.data.detach().numpy())
     plt.show()
     print(model.calculate_loss(inputs))
-    pm = SSAE.prune(model, 0.1, inputs)
+    importances = SSAE.calc_importance(model, inputs, batch_size=1800, background_data_samples=3)
+    pm, sl = SSAE.prune(model, importances, 0.95)
     plt.imshow(pm.forward(inputs[0]).detach().numpy().reshape(28,28))
     plt.show()
     plt.imshow(pm.encoder[0].weight.data.detach().numpy())
@@ -93,3 +94,4 @@ if __name__ == '__main__':
     print(model.encoder[0].weight.data.detach().numpy())
     print(model.calculate_loss(inputs))
     print(pm.calculate_loss(inputs))
+    print(sl)

@@ -30,10 +30,9 @@ def custom_function(model, data, weights, layer, index_start, index_stop):
     return np.array(outputs)
 
 
-def prune(model: AutoEncoder, importance_level, data_set, batch_size=800, background_data_samples=2):
-
-    p_model = copy.deepcopy(model)
-    for layer in tqdm(reversed(range(1))):
+def calc_importance(model: AutoEncoder, data_set, batch_size=400, background_data_samples=3):
+    importances = {}
+    for layer in tqdm(reversed(range(len(model.encoder)))):
         if type(model.encoder[layer]) != torch.nn.modules.linear.Linear:
             continue
         weights_in_layer = model.encoder[layer].weight.data.reshape(1, -1).flatten()
@@ -47,9 +46,19 @@ def prune(model: AutoEncoder, importance_level, data_set, batch_size=800, backgr
             batch_weights = weights_in_layer.detach().numpy()[index_start : index_stop]
             explainer = shap.KernelExplainer(lambda w: custom_function(model, data_set, w, layer, index_start, index_stop), background_data)
             shapley_values_badge = abs(explainer.shap_values(batch_weights))
-            shapley_values = np.hstack((shapley_values, shapley_values_badge))
+            shapley_values = np.hstack((shapley_values, shapley_values_badge.flatten()))
 
+        importances[layer] = shapley_values
+    return importances
 
+def prune(model, importance, importance_level):
+    total_links = 0
+    pruned_links = 0
+    p_model = copy.deepcopy(model)
+    for layer in tqdm(reversed(range(len(model.encoder)))):
+        if type(model.encoder[layer]) != torch.nn.modules.linear.Linear:
+            continue
+        shapley_values = importance[layer]
         layer_importance = sum(shapley_values)
         sorted_indices = np.flip(np.argsort(shapley_values))
         cumulative_importance = np.cumsum(shapley_values[sorted_indices])
@@ -58,13 +67,15 @@ def prune(model: AutoEncoder, importance_level, data_set, batch_size=800, backgr
         mask = np.ones(shapley_values.shape, dtype=bool)
         mask[:] = False
         mask[sorted_indices[:cutoff]] = True
+        total_links += len(mask)
+        pruned_links += np.count_nonzero(mask == False)
         mask = mask.reshape(model.encoder[layer].weight.shape)
 
         new_weight = torch.nn.Parameter(model.encoder[layer].weight.data * mask)
-        #p_model.encoder[layer].weight = new_weight
-        #p_model.decoder[len(p_model.encoder) - layer-1].weight = torch.nn.Parameter(p_model.decoder[len(p_model.encoder) - layer-1].weight.data * mask.T)
+        p_model.encoder[layer].weight = new_weight
+            #p_model.decoder[len(p_model.encoder) - layer-1].weight = torch.nn.Parameter(p_model.decoder[len(p_model.encoder) - layer-1].weight.data * mask.T)
 
-    return p_model
+    return p_model, pruned_links/total_links
 
 """
 def custom_function(model, data, weights, layer, node):
