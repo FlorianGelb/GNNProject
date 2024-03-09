@@ -7,6 +7,7 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 
 def return_sklearn_data_set(size):
+    print()
     data_set = CustomDataSet("DataPreparation/CorruptedFashionMNIST/Names.csv", "DataPreparation/CorruptedFashionMNIST")
     data_loader = DataLoader(data_set, batch_size=size)
     X =  next(iter(data_loader))[0].numpy().reshape(size, -1)
@@ -23,6 +24,7 @@ y_pred = svc_model.predict(X_test)
 c_matrix = confusion_matrix(y_test, y_pred)
 ConfusionMatrixDisplay(c_matrix).plot()
 plt.show()
+
 
 
 
