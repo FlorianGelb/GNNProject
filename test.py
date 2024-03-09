@@ -44,8 +44,8 @@ if __name__ == '__main__':
 
     #X = torch.FloatTensor(generate_synth_data(10))
     input_size = 28*28
-    bottleneck_size = 35
-    hidden_sizes = [35]
+    bottleneck_size = 25
+    hidden_sizes = [40]
     layers = len(hidden_sizes)
     model = AutoEncoder(input_size, bottleneck_size,hidden_sizes,layers)
 
@@ -84,14 +84,15 @@ if __name__ == '__main__':
     plt.imshow(model.encoder[0].weight.data.detach().numpy())
     plt.show()
     print(model.calculate_loss(inputs))
-    importances = SSAE.calc_importance(model, inputs, batch_size=1800, background_data_samples=3)
-    pm, sl = SSAE.prune(model, importances, 0.95)
+    importances = SSAE.calc_importance(model, inputs, batch_size=800, background_data_samples=3)
+    print(model.calculate_loss(inputs))
+    pm, sl = SSAE.prune(model, importances, 0.9)
+    #pm2 = SSAE.prune2(model, 999995, inputs, batch_size=800, background_data_samples=3)
     plt.imshow(pm.forward(inputs[0]).detach().numpy().reshape(28,28))
     plt.show()
     plt.imshow(pm.encoder[0].weight.data.detach().numpy())
     plt.show()
-    print(pm.encoder[0].weight.data.detach().numpy())
-    print(model.encoder[0].weight.data.detach().numpy())
     print(model.calculate_loss(inputs))
     print(pm.calculate_loss(inputs))
     print(sl)
+    #print(pm2.calculate_loss(inputs))

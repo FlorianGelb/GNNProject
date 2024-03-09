@@ -51,6 +51,7 @@ def calc_importance(model: AutoEncoder, data_set, batch_size=400, background_dat
         importances[layer] = shapley_values
     return importances
 
+
 def prune(model, importance, importance_level):
     total_links = 0
     pruned_links = 0
@@ -73,7 +74,7 @@ def prune(model, importance, importance_level):
 
         new_weight = torch.nn.Parameter(model.encoder[layer].weight.data * mask)
         p_model.encoder[layer].weight = new_weight
-            #p_model.decoder[len(p_model.encoder) - layer-1].weight = torch.nn.Parameter(p_model.decoder[len(p_model.encoder) - layer-1].weight.data * mask.T)
+        #p_model.decoder[len(p_model.encoder) - layer-1].weight = torch.nn.Parameter(p_model.decoder[len(p_model.encoder) - layer-1].weight.data * mask.T)
 
     return p_model, pruned_links/total_links
 
