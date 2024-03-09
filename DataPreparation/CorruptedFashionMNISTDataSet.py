@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from torchvision.io import read_image
 from torch.utils.data import Dataset
-
+import torch
 """
 From https://pytorch.org/tutorials/beginner/basics/data_tutorial.html
 
@@ -27,6 +27,7 @@ class CustomDataSet(Dataset):
             image = self.transform(image)
         if self.target_transform:
             label = self.target_transform(label)
+
         return image, label
 
 
