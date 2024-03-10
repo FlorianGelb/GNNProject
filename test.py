@@ -1,18 +1,13 @@
 import torch
 import numpy as np
 from AutoEncoders.SimpleAutoencoder import AutoEncoder
-import Pruningmethods.ShapSAE as SSAE
-import matplotlib.pyplot as plt
-from sklearn.datasets import make_moons
+import Pruning.ShapSAE as SSAE
 from torch import nn, optim
-from torch.autograd import Variable
-from torchvision import transforms, datasets
-from torch.utils.data import DataLoader, TensorDataset
-from torchvision.utils import save_image
-import os
+from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from DataPreparation.CorruptedFashionMNISTDataSet import CustomDataSet
+from torchvision import datasets
 
 if __name__ == '__main__':
 
@@ -29,17 +24,17 @@ if __name__ == '__main__':
 
 
     def transform(input):
-        #input = torch.FloatTensor(np.array(input))
+        input = torch.FloatTensor(np.array(input))
         input = input.flatten()
         input = input.type(torch.FloatTensor)
         input -= torch.min(input)
         input /= torch.max(input)
         return input
 
-    X = CustomDataSet("DataPreparation/CorruptedFashionMNIST/Names.csv",
-                      "DataPreparation/CorruptedFashionMNIST", transform=transform)
+    #X = CustomDataSet("DataPreparation/CorruptedFashionMNIST/Names.csv",
+    #                  "DataPreparation/CorruptedFashionMNIST", transform=transform)
 
-    #X = datasets.FashionMNIST("/FashionMNIST/", download=False,train=True,transform=transform)
+    X = datasets.FashionMNIST("/FashionMNIST/", download=False,train=True,transform=transform)
     X = torch.utils.data.Subset(X, range(1000))
 
     #X = torch.FloatTensor(generate_synth_data(10))
@@ -50,7 +45,7 @@ if __name__ == '__main__':
     model = AutoEncoder(input_size, bottleneck_size,hidden_sizes,layers)
 
 
-    data_loader = DataLoader(X, batch_size=64, shuffle=True)
+    data_loader = DataLoader(X, batch_size=512, shuffle=True)
 
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
@@ -72,6 +67,9 @@ if __name__ == '__main__':
 
 
         loss_list.append(loss.item())
+
+    import Pruning.LookaheadPruning as LAP
+
     plt.plot(range(num_epochs), loss_list, label='Training Loss')
     plt.xlabel('Epoch')
     plt.ylabel('Loss')
@@ -84,15 +82,26 @@ if __name__ == '__main__':
     plt.imshow(model.encoder[0].weight.data.detach().numpy())
     plt.show()
     print(model.calculate_loss(inputs))
-    importances = SSAE.calc_importance(model, inputs, batch_size=800, background_data_samples=3)
+
+
+    importances = SSAE.calc_importance(model, inputs, batch_size=800, background_data_samples=2)
+    plt.matshow(importances[0].reshape(-1,40))
+    plt.show()
+
+
     print(model.calculate_loss(inputs))
-    pm, sl = SSAE.prune(model, importances, 0.9)
+
+    pm, sl, masks = SSAE.prune(model, importances, 0.99)
     #pm2 = SSAE.prune2(model, 999995, inputs, batch_size=800, background_data_samples=3)
+    plt.matshow(masks[0].reshape(-1, 40))
+    plt.show()
+    LAP.apply_lap(model, 2*[0.15])
+
     plt.imshow(pm.forward(inputs[0]).detach().numpy().reshape(28,28))
     plt.show()
     plt.imshow(pm.encoder[0].weight.data.detach().numpy())
     plt.show()
     print(model.calculate_loss(inputs))
     print(pm.calculate_loss(inputs))
-    print(sl)
+    #print(sl)
     #print(pm2.calculate_loss(inputs))

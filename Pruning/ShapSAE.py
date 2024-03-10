@@ -42,8 +42,8 @@ def calc_importance(model: AutoEncoder, data_set, batch_size=400, background_dat
 
         for i in tqdm(range(num_batches)):
             index_start, index_stop = i * batch_size, min((i + 1) * batch_size, len(weights_in_layer))
-            background_data = np.random.uniform(-1, 1, (background_data_samples,  index_stop - index_start))
             batch_weights = weights_in_layer.detach().numpy()[index_start : index_stop]
+            background_data = np.random.uniform(batch_weights.min(), batch_weights.max(), (background_data_samples,  index_stop - index_start))
             explainer = shap.KernelExplainer(lambda w: custom_function(model, data_set, w, layer, index_start, index_stop), background_data)
             shapley_values_badge = abs(explainer.shap_values(batch_weights))
             shapley_values = np.hstack((shapley_values, shapley_values_badge.flatten()))
@@ -56,6 +56,7 @@ def prune(model, importance, importance_level):
     total_links = 0
     pruned_links = 0
     p_model = copy.deepcopy(model)
+    masks = {}
     for layer in tqdm(reversed(range(len(model.encoder)))):
         if type(model.encoder[layer]) != torch.nn.modules.linear.Linear:
             continue
@@ -75,8 +76,8 @@ def prune(model, importance, importance_level):
         new_weight = torch.nn.Parameter(model.encoder[layer].weight.data * mask)
         p_model.encoder[layer].weight = new_weight
         #p_model.decoder[len(p_model.encoder) - layer-1].weight = torch.nn.Parameter(p_model.decoder[len(p_model.encoder) - layer-1].weight.data * mask.T)
-
-    return p_model, pruned_links/total_links
+        masks[layer] = mask
+    return p_model, pruned_links/2*total_links, masks
 
 """
 def custom_function(model, data, weights, layer, node):

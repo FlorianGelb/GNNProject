@@ -1,6 +1,16 @@
 import torch
 import torch.nn as nn
 
+"""
+@inproceedings{
+  park2020lookahead,
+  title={Lookahead: A Far-sighted Alternative of Magnitude-based Pruning},
+  author={Sejun Park and Jaeho Lee and Sangwoo Mo and Jinwoo Shin},
+  booktitle={International Conference on Learning Representations},
+  year={2020},
+  url={https://openreview.net/forum?id=ryl3ygHYDB}
+}
+"""
 
 def MP(weights, masks, prune_ratios):
     """Magnitude pruning"""
