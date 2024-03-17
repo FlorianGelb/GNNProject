@@ -1,5 +1,5 @@
 from  sklearn.svm import SVC
-from DataPreparation.CorruptedFashionMNISTDataSet import CustomDataSet
+from DataPreparation.CustomDataSet import CustomDataSet
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 import pickle

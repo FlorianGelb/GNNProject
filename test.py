@@ -6,7 +6,7 @@ from torch import nn, optim
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from DataPreparation.CorruptedFashionMNISTDataSet import CustomDataSet
+from DataPreparation.CustomDataSet import CustomDataSet
 from torchvision import datasets
 
 if __name__ == '__main__':
