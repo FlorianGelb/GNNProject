@@ -91,7 +91,8 @@ if __name__ == '__main__':
 
     print(model.calculate_loss(inputs))
 
-    pm, sl, masks = SSAE.prune(model, importances, 0.99)
+    pm, masks = SSAE.prune(model, importances, 0.99)
+    pm2, masks = SSAE.prune(model, importances, 0.9)
     #pm2 = SSAE.prune2(model, 999995, inputs, batch_size=800, background_data_samples=3)
     plt.matshow(masks[0].reshape(-1, 40))
     plt.show()
@@ -103,5 +104,6 @@ if __name__ == '__main__':
     plt.show()
     print(model.calculate_loss(inputs))
     print(pm.calculate_loss(inputs))
+    print(pm2.calculate_loss(inputs))
     #print(sl)
     #print(pm2.calculate_loss(inputs))

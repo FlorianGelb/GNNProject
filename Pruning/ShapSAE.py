@@ -52,7 +52,7 @@ def calc_importance(model: AutoEncoder, data_set, batch_size=400, background_dat
     return importances
 
 
-def prune(model, importance, importance_level):
+def prune(model, importance, sparsity_level):
     total_links = 0
     pruned_links = 0
     p_model = copy.deepcopy(model)
@@ -64,7 +64,7 @@ def prune(model, importance, importance_level):
         layer_importance = sum(shapley_values)
         sorted_indices = np.flip(np.argsort(shapley_values))
         cumulative_importance = np.cumsum(shapley_values[sorted_indices])
-        cutoff = np.argmax(cumulative_importance >= layer_importance * importance_level)
+        cutoff = int(sparsity_level * len(shapley_values)) #np.argmax(cumulative_importance >= layer_importance * sparsity_level)
 
         mask = np.ones(shapley_values.shape, dtype=bool)
         mask[:] = False
@@ -75,9 +75,9 @@ def prune(model, importance, importance_level):
 
         new_weight = torch.nn.Parameter(model.encoder[layer].weight.data * mask)
         p_model.encoder[layer].weight = new_weight
-        #p_model.decoder[len(p_model.encoder) - layer-1].weight = torch.nn.Parameter(p_model.decoder[len(p_model.encoder) - layer-1].weight.data * mask.T)
+        p_model.decoder[len(p_model.encoder) - layer-1].weight = torch.nn.Parameter(p_model.decoder[len(p_model.encoder) - layer-1].weight.data * mask.T)
         masks[layer] = mask
-    return p_model, pruned_links/2*total_links, masks
+    return p_model, masks
 
 """
 def custom_function(model, data, weights, layer, node):
