@@ -53,7 +53,7 @@ def calc_importance(model: AutoEncoder, data_set, batch_size=400, background_dat
 
 
 def prune(model, importance, sparsity_level):
-    sparsity_level = 1 - sparsity_level + 11
+    sparsity_level = 1 - sparsity_level
     total_links = 0
     pruned_links = 0
     p_model = copy.deepcopy(model)
