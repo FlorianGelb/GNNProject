@@ -5,10 +5,21 @@ from torch.utils.data import DataLoader
 import pickle
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
+import torch
+import numpy as np
+#
+
+def transform(input):
+    input = torch.FloatTensor(np.array(input))
+    input = input.flatten()
+    input = input.type(torch.FloatTensor)
+    input -= torch.min(input)
+    input /= torch.max(input)
+    return input
 
 def return_sklearn_data_set(size):
     print()
-    data_set = CustomDataSet("DataPreparation/CorruptedFashionMNIST/Names.csv", "DataPreparation/CorruptedFashionMNIST")
+    data_set = CustomDataSet("DataPreparation/CorruptedFashionMNIST/Names.csv", "DataPreparation/CorruptedFashionMNIST", transform=transform)
     data_loader = DataLoader(data_set, batch_size=size)
     X =  next(iter(data_loader))[0].numpy().reshape(size, -1)
     y = next(iter(data_loader))[1].numpy()
@@ -24,6 +35,7 @@ y_pred = svc_model.predict(X_test)
 c_matrix = confusion_matrix(y_test, y_pred)
 ConfusionMatrixDisplay(c_matrix).plot()
 plt.show()
+print(svc_model.score(X_test, y_test))
 
 
 

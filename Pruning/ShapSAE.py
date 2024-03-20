@@ -65,8 +65,7 @@ def prune(model, importance, sparsity_level):
         layer_importance = sum(shapley_values)
         sorted_indices = np.flip(np.argsort(shapley_values))
         cumulative_importance = np.cumsum(shapley_values[sorted_indices])
-        cutoff = int(sparsity_level * len(shapley_values)) #np.argmax(cumulative_importance >= layer_importance * sparsity_level)
-
+        cutoff = int(sparsity_level * len(shapley_values)) #np.argmax(cumulative_importance >= layer_importance * sparsity_level) #
         mask = np.ones(shapley_values.shape, dtype=bool)
         mask[:] = False
         mask[sorted_indices[:cutoff]] = True
