@@ -31,9 +31,9 @@ def custom_function(model, data, weights, layer, index_start, index_stop):
 
 
 def calc_importance(model: AutoEncoder, data_set, batch_size=400, background_data_samples=3):
-    importances = {}
+    importance = {}
     for layer in tqdm(reversed(range(len(model.encoder)))):
-        if type(model.encoder[layer]) != torch.nn.modules.linear.Linear:
+        if type(model.encoder[layer]) is not torch.nn.modules.linear.Linear:
             continue
         weights_in_layer = model.encoder[layer].weight.data.reshape(1, -1).flatten()
 
@@ -42,14 +42,16 @@ def calc_importance(model: AutoEncoder, data_set, batch_size=400, background_dat
 
         for i in tqdm(range(num_batches)):
             index_start, index_stop = i * batch_size, min((i + 1) * batch_size, len(weights_in_layer))
-            batch_weights = weights_in_layer.detach().numpy()[index_start : index_stop]
-            background_data = np.random.uniform(batch_weights.min(), batch_weights.max(), (background_data_samples,  index_stop - index_start))
-            explainer = shap.KernelExplainer(lambda w: custom_function(model, data_set, w, layer, index_start, index_stop), background_data)
+            batch_weights = weights_in_layer.detach().numpy()[index_start:index_stop]
+            background_data = np.random.uniform(batch_weights.min(), batch_weights.max(),
+                                                (background_data_samples,  index_stop - index_start))
+            explainer = shap.KernelExplainer(lambda w: custom_function(model, data_set, w, layer,
+                                                                       index_start, index_stop), background_data)
             shapley_values_badge = abs(explainer.shap_values(batch_weights))
             shapley_values = np.hstack((shapley_values, shapley_values_badge.flatten()))
 
-        importances[layer] = shapley_values
-    return importances
+        importance[layer] = shapley_values
+    return importance
 
 
 def prune(model, importance, sparsity_level):
@@ -62,10 +64,9 @@ def prune(model, importance, sparsity_level):
         if type(model.encoder[layer]) != torch.nn.modules.linear.Linear:
             continue
         shapley_values = importance[layer]
-        layer_importance = sum(shapley_values)
+
         sorted_indices = np.flip(np.argsort(shapley_values))
-        cumulative_importance = np.cumsum(shapley_values[sorted_indices])
-        cutoff = int(sparsity_level * len(shapley_values)) #np.argmax(cumulative_importance >= layer_importance * sparsity_level) #
+        cutoff = int(sparsity_level * len(shapley_values))
         mask = np.ones(shapley_values.shape, dtype=bool)
         mask[:] = False
         mask[sorted_indices[:cutoff]] = True
