@@ -143,7 +143,7 @@ line = lambda i, l: "{}: ".format(i) + avg_lambda(l) + "\t"
 # Test function
 
 
-def test(models, loader, log=None):
+def test(train_loader,models, loader, log=None):
     test_size = len(loader.sampler)
 
     test_loss = {k: 0. for k in models}
