@@ -165,3 +165,32 @@ def test(models, loader, log=None):
     lines = "\n".join([line(k, test_loss[k]) for k in models]) + "\n"
     report = "Test set:\n" + lines
     print(report)
+
+
+def plot_mnist(images,title, shape):
+    fig = plt.figure(figsize=shape[::-1], dpi=150)
+    num_images = min(len(images), shape[0] * shape[1])
+
+    for j in range(1, num_images + 1):
+        ax = fig.add_subplot(shape[0], shape[1], j)
+        ax.matshow(images[j - 1, 0, :, :], cmap='gray')
+        plt.xticks(np.array([]))
+        plt.yticks(np.array([]))
+    plt.suptitle(title)
+    plt.show()
+
+def plot(models,data_loader,shape):
+  iter_data=iter(data_loader)
+  data, _ = next(iter_data)
+  to_plots={k: [] for k in models}
+  encode={k: [] for k in models}
+  for k in models:
+    output = models[k](data)
+
+    to_plot = output.view(-1, 1, 28, 28).clamp(0, 1).data.numpy()
+    to_plots[k].append(to_plot)
+
+  plot_mnist(data.data.numpy(),"Original" ,shape)
+  for k in to_plots:
+    plot_mnist(to_plots[k][0],f'K={k}', shape)
+      
