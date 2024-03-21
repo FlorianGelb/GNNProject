@@ -34,14 +34,14 @@ if __name__ == '__main__':
     #X = CustomDataSet("DataPreparation/CorruptedFashionMNIST/Names.csv",
     #                  "DataPreparation/CorruptedFashionMNIST", transform=transform)
 
-    X = datasets.FashionMNIST("/FashionMNIST/", download=False,train=True,transform=transform)
-    X = torch.utils.data.Subset(X, range(1000))
+    #X = datasets.FashionMNIST("/FashionMNIST/", download=False,train=True,transform=transform)
+    #X = torch.utils.data.Subset(X, range(1000))
 
-    #X = torch.FloatTensor(generate_synth_data(10))
-    input_size = 28*28
-    bottleneck_size = 25
-    hidden_sizes = [40]
-    layers = len(hidden_sizes)
+    X = torch.FloatTensor(generate_synth_data(15000))
+    input_size = 6
+    bottleneck_size = 3
+    hidden_sizes = [3]
+    layers = 0
     model = AutoEncoder(input_size, bottleneck_size,hidden_sizes,layers)
 
 
@@ -56,7 +56,7 @@ if __name__ == '__main__':
     state_dicts = {}#Storage parameters
     for epoch in tqdm(range(num_epochs)):
         for data in data_loader:
-            inputs, _ = data
+            inputs = data
             outputs = model.forward(inputs)
             loss = criterion(outputs, inputs)
 
@@ -75,25 +75,25 @@ if __name__ == '__main__':
     plt.ylabel('Loss')
     plt.legend()
     plt.show()
-    plt.imshow(model.forward(inputs[0]).detach().numpy().reshape(28,28))
-    plt.show()
-    plt.imshow(inputs[0].detach().numpy().reshape(28,28))
-    plt.show()
-    plt.imshow(model.encoder[0].weight.data.detach().numpy())
-    plt.show()
-    print(model.calculate_loss(inputs))
 
 
     importances = SSAE.calc_importance(model, inputs, batch_size=800, background_data_samples=2)
-    plt.matshow(importances[0].reshape(-1,40))
+    plt.matshow(importances[0].reshape(3, 6))
+    plt.xticks([0,1,2,3,4,5], ["x1", "x2", "x3", "x4", "x5", "x6"])
+    plt.yticks([0,1,2], ["z1", "z2", "z3"])
+    plt.colorbar()
     plt.show()
 
 
     print(model.calculate_loss(inputs))
 
     pm, masks = SSAE.prune(model, importances, 0.99)
-    pm2, masks = SSAE.prune(model, importances, 0.9)
+    pm2, masks1 = SSAE.prune(model, importances, 0.9)
     #pm2 = SSAE.prune2(model, 999995, inputs, batch_size=800, background_data_samples=3)
+    print(masks)
+    print(masks1)
+
+
     plt.matshow(masks[0].reshape(-1, 40))
     plt.show()
     LAP.apply_lap(model, 2*[0.15])
