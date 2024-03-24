@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 
 
-data_set = datasets.FashionMNIST("/FashionMNIST/", download=False, transform=c.fog)
+data_set = datasets.FashionMNIST("/FashionMNIST/", download=True, transform=c.fog)
 data_loader = DataLoader(data_set, batch_size=1)
 
 
