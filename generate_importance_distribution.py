@@ -23,19 +23,7 @@ if __name__ == '__main__':
         return np.hstack([x1, x2, x3, x4, x5, x6])
 
 
-    def transform(input):
-        input = torch.FloatTensor(np.array(input))
-        input = input.flatten()
-        input = input.type(torch.FloatTensor)
-        input -= torch.min(input)
-        input /= torch.max(input)
-        return input
 
-    #X = CustomDataSet("DataPreparation/CorruptedFashionMNIST/Names.csv",
-    #                  "DataPreparation/CorruptedFashionMNIST", transform=transform)
-
-    #X = datasets.FashionMNIST("/FashionMNIST/", download=False,train=True,transform=transform)
-    #X = torch.utils.data.Subset(X, range(1000))
 
     X = torch.FloatTensor(generate_synth_data(15000))
     input_size = 6
@@ -45,7 +33,7 @@ if __name__ == '__main__':
     model = AutoEncoder(input_size, bottleneck_size,hidden_sizes,layers)
 
 
-    data_loader = DataLoader(X, batch_size=512, shuffle=True)
+    data_loader = DataLoader(X, batch_size=64, shuffle=True)
 
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
@@ -68,7 +56,6 @@ if __name__ == '__main__':
 
         loss_list.append(loss.item())
 
-    import Pruning.LookaheadPruning as LAP
 
     plt.plot(range(num_epochs), loss_list, label='Training Loss')
     plt.xlabel('Epoch')
@@ -83,27 +70,3 @@ if __name__ == '__main__':
     plt.yticks([0,1,2], ["z1", "z2", "z3"])
     plt.colorbar()
     plt.show()
-
-
-    print(model.calculate_loss(inputs))
-
-    pm, masks = SSAE.prune(model, importances, 0.99)
-    pm2, masks1 = SSAE.prune(model, importances, 0.9)
-    #pm2 = SSAE.prune2(model, 999995, inputs, batch_size=800, background_data_samples=3)
-    print(masks)
-    print(masks1)
-
-
-    plt.matshow(masks[0].reshape(-1, 40))
-    plt.show()
-    LAP.apply_lap(model, 2*[0.15])
-
-    plt.imshow(pm.forward(inputs[0]).detach().numpy().reshape(28,28))
-    plt.show()
-    plt.imshow(pm.encoder[0].weight.data.detach().numpy())
-    plt.show()
-    print(model.calculate_loss(inputs))
-    print(pm.calculate_loss(inputs))
-    print(pm2.calculate_loss(inputs))
-    #print(sl)
-    #print(pm2.calculate_loss(inputs))

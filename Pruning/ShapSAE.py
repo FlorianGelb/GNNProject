@@ -56,22 +56,19 @@ def calc_importance(model: AutoEncoder, data_set, batch_size=400, background_dat
 
 def prune(model, importance, sparsity_level):
     sparsity_level = 1 - sparsity_level
-    total_links = 0
-    pruned_links = 0
+
     p_model = copy.deepcopy(model)
     masks = {}
     for layer in tqdm(reversed(range(len(model.encoder)))):
         if type(model.encoder[layer]) != torch.nn.modules.linear.Linear:
             continue
         shapley_values = importance[layer]
-
         sorted_indices = np.flip(np.argsort(shapley_values))
         cutoff = int(sparsity_level * len(shapley_values))
         mask = np.ones(shapley_values.shape, dtype=bool)
         mask[:] = False
         mask[sorted_indices[:cutoff]] = True
-        total_links += len(mask)
-        pruned_links += np.count_nonzero(mask == False)
+
         mask = mask.reshape(model.encoder[layer].weight.shape)
 
         new_weight = torch.nn.Parameter(model.encoder[layer].weight.data * mask)
@@ -79,51 +76,3 @@ def prune(model, importance, sparsity_level):
         p_model.decoder[len(p_model.encoder) - layer-1].weight = torch.nn.Parameter(p_model.decoder[len(p_model.encoder) - layer-1].weight.data * mask.T)
         masks[layer] = mask
     return p_model, masks
-
-"""
-def custom_function(model, data, weights, layer, node):
-    weight_matrix_shape = model.encoder[layer].weight.data[:, node].shape
-    outputs = []
-    weight_matrix = model.encoder[layer].weight.data
-    for w in weights:
-        weight_matrix[:, node] = torch.Tensor(w.reshape(weight_matrix_shape))
-        model.encoder[layer].weight =  torch.nn.Parameter(weight_matrix)
-        outputs.append(model.calculate_loss(data).detach().numpy())
-    return np.array(outputs)
-
-
-def prune(model : AutoEncoder, importance_level, data_set, background_data_samples=5):
-
-    model = copy.deepcopy(model)
-    for layer in tqdm(range(len(model.encoder))):
-        #if model.encoder[layer]
-        if type(model.encoder[layer]) != torch.nn.modules.linear.Linear:
-            continue
-        encoder_weight_matrix = model.encoder[layer].weight.data
-        decoder_layer = len(model.decoder) - layer - 1
-        decoder_weight_matrix = model.decoder[decoder_layer].weight.data
-        for node in tqdm(range(model.encoder[layer].weight.shape[1])):
-            weights_in_layer = model.encoder[layer].weight.data[:, node].reshape(1, -1).flatten()
-            background_data = np.random.uniform(weights_in_layer.min(), weights_in_layer.max(), (background_data_samples, len(weights_in_layer)))
-            explainer = shap.KernelExplainer(lambda w: custom_function(model, data_set, w, layer, node), background_data)
-            shapley_values = abs(explainer.shap_values(weights_in_layer.detach().numpy()))
-            layer_importance = sum(shapley_values)
-            sorted_indices = np.flip(np.argsort(shapley_values))
-            cumulative_importance = np.cumsum(shapley_values[sorted_indices])
-            cutoff = np.argmax(cumulative_importance >= layer_importance * importance_level)
-            mask = np.ones(shapley_values.shape, dtype=bool)
-            mask[:] = False
-            mask[sorted_indices[:cutoff]] = True
-            mask = mask.reshape(model.encoder[layer].weight.data[:, node].shape)
-            new_weight = torch.nn.Parameter(model.encoder[layer].weight.data[:, node] * mask)
-            encoder_weight_matrix[:, node] = torch.Tensor(new_weight)
-            model.encoder[layer].weight = torch.nn.Parameter(encoder_weight_matrix)
-            new_weight = torch.nn.Parameter(model.decoder[decoder_layer].weight.data[node, :] * mask)
-            decoder_weight_matrix[node, :] = torch.Tensor(new_weight)
-            model.decoder[decoder_layer].weight = torch.nn.Parameter(decoder_weight_matrix)
-        break
-
-    return model
-
-"""
-
