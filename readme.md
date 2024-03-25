@@ -20,3 +20,8 @@ Classifiers can be trained using the scripts in Classifiers/ or by downloading t
 The links are stored in Classifiers/classifier_downloads.
 They are stored using pickle.
 Make sure, that  you store them in Classifiers/ or change the paths in the notebooks accordingly.
+
+# Generating .pth files or K-SAE:
+Run K_SAE_Corrupted_data_final.ipynb and K_SAE_nonoise_data_final.ipynb.
+This should create the stored versions of the trained AEs in SavedModels/
+It might be necessary to adjust relative path based on os.
