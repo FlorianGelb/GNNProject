@@ -19,3 +19,4 @@ Its parameters are the path to the folder containing the images and the path to 
 Classifiers can be trained using the scripts in Classifiers/ or by downloading them from google drive.
 The links are stored in Classifiers/classifier_downloads.
 They are stored using pickle.
+Make sure, that  you store them in Classifiers/ or change the paths in the notebooks accordingly.

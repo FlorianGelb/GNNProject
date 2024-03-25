@@ -26,9 +26,7 @@ def return_sklearn_data_set(size):
     return X, y
 X, y = return_sklearn_data_set(60000)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0, shuffle=True)
-#HG = HalvingGridSearchCV(SVC(), param_grid={"C": [i for i in range(2, 14, 2)], "kernel": ["linear", "rbf"]}, cv=3, verbose=5).fit(X_train, y_train)
-#print(HG.best_estimator_.score(X_test, y_test))
-#print(HG.best_params_)
+
 
 svc_model = SVC(C=100, kernel="poly").fit(X_train, y_train)
 print(svc_model.score(X_test, y_test))
@@ -40,6 +38,6 @@ plt.show()
 
 
 
-with open("MNISTClassifier_no_noise.pkl", "wb+") as file:
+with open("MNISTClassifier.pkl", "wb+") as file:
     pickle.dump(svc_model, file)
 
