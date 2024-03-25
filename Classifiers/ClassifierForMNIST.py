@@ -1,14 +1,25 @@
 from  sklearn.svm import SVC
-from DataPreparation.CorruptedFashionMNISTDataSet import CustomDataSet
+from DataPreparation.CustomDataSet import CustomDataSet
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 import pickle
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 from torchvision.datasets import MNIST
+import torch
+import numpy as np
+#
+
+def transform(input):
+    input = torch.FloatTensor(np.array(input))
+    input = input.flatten()
+    input = input.type(torch.FloatTensor)
+    input -= torch.min(input)
+    input /= torch.max(input)
+    return input
 
 def return_sklearn_data_set(size):
-    data_set = CustomDataSet("DataPreparation/CorruptedMNIST/Names.csv", "DataPreparation/CorruptedMNIST")
+    data_set = CustomDataSet("DataPreparation/CorruptedMNIST/Names.csv", "DataPreparation/CorruptedMNIST", transform=transform)
     data_loader = DataLoader(data_set, batch_size=size)
     X =  next(iter(data_loader))[0].numpy().reshape(size, -1)
     y = next(iter(data_loader))[1].numpy()
