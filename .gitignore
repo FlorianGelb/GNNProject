@@ -161,7 +161,7 @@ Classifiers/MNIST
 
 # Cython debug symbols
 cython_debug/
-
+*.pth
 MNIST/
 
 

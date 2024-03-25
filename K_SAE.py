@@ -109,7 +109,7 @@ class Net(nn.Module):
         self._loss = self.loss_fn(x, target, **kwargs)
         return self._loss
 
-def train(epoch, models, log=None):
+def train(train_loader, epoch, models, log=None):
     train_size = len(train_loader.sampler)
     for batch_idx, (data, _) in enumerate(train_loader):
         for model in models.values():
@@ -143,7 +143,7 @@ line = lambda i, l: "{}: ".format(i) + avg_lambda(l) + "\t"
 # Test function
 
 
-def test(train_loader,models, loader, log=None):
+def test(models, loader, log=None):
     test_size = len(loader.sampler)
 
     test_loss = {k: 0. for k in models}
